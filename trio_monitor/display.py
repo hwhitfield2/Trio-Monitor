@@ -379,28 +379,29 @@ class Display:
         screen = self.screen
         w, h = screen.get_width(), screen.get_height()
         cx = w // 2
+        s = min(w, h)  # scale text by the smaller dimension (portrait-safe)
         ssid, pw = network.HOTSPOT_SSID, self._hotspot_pw
 
-        self.text(screen, "Connect Trio Monitor to Wi-Fi", int(h * 0.09),
+        self.text(screen, "Connect Trio Monitor to Wi-Fi", int(s * 0.09),
                   self.pal.fg, midtop=(cx, int(h * 0.035)))
-        self.text(screen, "1.  Scan to join the setup hotspot", int(h * 0.055),
+        self.text(screen, "1.  Scan to join the setup hotspot", int(s * 0.055),
                   self.pal.dim, midtop=(cx, int(h * 0.14)))
 
-        qr = self._qr_surface(f"WIFI:T:WPA;S:{ssid};P:{pw};;", int(h * 0.42))
+        qr = self._qr_surface(f"WIFI:T:WPA;S:{ssid};P:{pw};;", int(s * 0.42))
         if qr:
             rect = qr.get_rect(center=(cx, int(h * 0.45)))
             screen.blit(qr, rect)
-            info_y = rect.bottom + int(h * 0.025)
+            info_y = rect.bottom + int(s * 0.025)
         else:
             info_y = int(h * 0.40)
 
-        self.text(screen, f"{ssid}   password: {pw}", int(h * 0.055),
+        self.text(screen, f"{ssid}   password: {pw}", int(s * 0.055),
                   self.pal.fg, midtop=(cx, info_y))
         self.text(
             screen,
             f"2.  Then open  http://{network.HOTSPOT_ADDR}:{self.config.admin_port}"
             "/settings  to pick your Wi-Fi",
-            int(h * 0.05), self.pal.dim, midtop=(cx, info_y + int(h * 0.08)),
+            int(s * 0.05), self.pal.dim, midtop=(cx, info_y + int(s * 0.08)),
         )
 
     def is_unconfigured(self, snaps) -> bool:
@@ -415,28 +416,29 @@ class Display:
         screen = self.screen
         w, h = screen.get_width(), screen.get_height()
         cx = w // 2
+        s = min(w, h)  # scale text by the smaller dimension (portrait-safe)
         url = f"http://{self._cached_lan_ip()}:{self.config.admin_port}/settings"
 
-        self.text(screen, "Trio Monitor", int(h * 0.11), self.pal.fg,
+        self.text(screen, "Trio Monitor", int(s * 0.11), self.pal.fg,
                   midtop=(cx, int(h * 0.045)))
         self.text(screen, "Scan from a phone on this network to set up",
-                  int(h * 0.055), self.pal.dim, midtop=(cx, int(h * 0.16)))
+                  int(s * 0.055), self.pal.dim, midtop=(cx, int(h * 0.16)))
 
-        qr = self._qr_surface(url, int(h * 0.48)) if self.config.admin_port else None
+        qr = self._qr_surface(url, int(s * 0.48)) if self.config.admin_port else None
         if qr:
             rect = qr.get_rect(center=(cx, int(h * 0.51)))
             screen.blit(qr, rect)
-            info_y = rect.bottom + int(h * 0.03)
+            info_y = rect.bottom + int(s * 0.03)
         else:
             info_y = int(h * 0.45)
 
-        self.text(screen, url, int(h * 0.06), self.pal.fg, midtop=(cx, info_y))
+        self.text(screen, url, int(s * 0.06), self.pal.fg, midtop=(cx, info_y))
         if self.config.admin_password:
             self.text(
                 screen,
                 f"login:  admin  /  {self.config.admin_password}",
-                int(h * 0.05), self.pal.dim,
-                midtop=(cx, info_y + int(h * 0.075)),
+                int(s * 0.05), self.pal.dim,
+                midtop=(cx, info_y + int(s * 0.075)),
             )
 
     def draw(self):
@@ -453,13 +455,21 @@ class Display:
             self.draw_setup_screen()
             pygame.display.flip()
             return
+        full_w = self.screen.get_width()
+        portrait = height > full_w
         for i, (user, snap) in enumerate(zip(users, snaps)):
-            rect = pygame.Rect(i * width, 0, width, height)
+            if portrait:
+                row_h = height // len(users)
+                rect = pygame.Rect(0, i * row_h, full_w, row_h)
+                if i > 0:
+                    pygame.draw.line(self.screen, self.pal.line,
+                                     (12, rect.top), (full_w - 12, rect.top), 2)
+            else:
+                rect = pygame.Rect(i * width, 0, width, height)
+                if i > 0:
+                    pygame.draw.line(self.screen, self.pal.line,
+                                     (rect.left, 12), (rect.left, height - 12), 2)
             self.draw_panel(rect, user, snap)
-            if i > 0:
-                pygame.draw.line(
-                    self.screen, self.pal.line, (rect.left, 12), (rect.left, height - 12), 2
-                )
         # Small clock, top-center between the two names.
         self.text(
             self.screen, time.strftime("%H:%M"), int(height * 0.055), self.pal.dim,

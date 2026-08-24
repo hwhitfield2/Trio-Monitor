@@ -65,6 +65,23 @@ def seed_demo_data(store: Store, users) -> None:
         )
 
 
+def wait_for_connected_display(timeout: float = 45.0) -> bool:
+    """Block until a DRM connector reports 'connected' (or timeout)."""
+    import glob
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        for status_path in glob.glob("/sys/class/drm/card*-*/status"):
+            try:
+                if open(status_path).read().strip() == "connected":
+                    return True
+            except OSError:
+                continue
+        time.sleep(1)
+    logging.warning("No connected display after %.0fs; trying anyway", timeout)
+    return False
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="trio-monitor")
     parser.add_argument(
@@ -125,6 +142,9 @@ def main() -> int:
                 and not os.environ.get("WAYLAND_DISPLAY")
             ):
                 os.environ["SDL_VIDEODRIVER"] = "kmsdrm"
+                # Early in boot the panel may still be probing; grabbing DRM
+                # before a connector is up can leave the screen undriven.
+                wait_for_connected_display()
             from .display import Display
 
             display = Display(config, store, windowed=args.windowed)
