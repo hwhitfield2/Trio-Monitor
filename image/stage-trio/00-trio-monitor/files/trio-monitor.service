@@ -12,6 +12,9 @@ WorkingDirectory=/opt/trio-monitor
 ExecStart=/usr/bin/python3 -m trio_monitor --config /home/trio/config.json
 Restart=always
 RestartSec=3
+# fbdev proved reliable across Pi 4/5 panels; kmsdrm stays as
+# the fallback if TRIO_DISPLAY is ever unset.
+Environment=TRIO_DISPLAY=fbdev
 Environment=SDL_VIDEODRIVER=kmsdrm
 Environment=SDL_AUDIODRIVER=dummy
 Environment=PYTHONUNBUFFERED=1
