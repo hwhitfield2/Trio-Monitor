@@ -136,7 +136,10 @@ def main() -> int:
         else:
             if os.environ.get("TRIO_DISPLAY") == "fbdev":
                 # Render into a dummy SDL surface; frames go to /dev/fb0.
-                os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+                # Force dummy: a unit-level SDL_VIDEODRIVER=kmsdrm would
+                # otherwise make SDL seize the display with a blank buffer
+                # while our fb0 frames render into the void behind it.
+                os.environ["SDL_VIDEODRIVER"] = "dummy"
             elif (
                 # Default SDL to kmsdrm on Linux consoles (no desktop session).
                 sys.platform.startswith("linux")
