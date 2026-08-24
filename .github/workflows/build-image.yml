@@ -34,6 +34,7 @@ jobs:
           disable-first-boot-user-rename: 1
           enable-ssh: 1
           compression: xz
+          compression-level: 9
           verbose-output: true
 
       - name: Upload image artifact
