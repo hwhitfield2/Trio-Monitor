@@ -7,16 +7,10 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Native ARM runner: no QEMU emulation needed, and much faster builds.
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
-
-      # Registers qemu-aarch64 with the fix-binary flag so ARM binaries run
-      # inside pi-gen's build container on the x86 runner.
-      - name: Set up QEMU for arm64
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
 
       - name: Build Raspberry Pi OS image with pi-gen
         id: build
