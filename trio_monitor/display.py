@@ -77,7 +77,10 @@ class FramebufferPresenter:
         self.stride = int(open(base + "/stride").read())
         if self.bpp not in (16, 32):
             raise RuntimeError(f"unsupported framebuffer depth: {self.bpp}")
-        self.dev = open(device, "r+b", buffering=0)
+        # The device is reopened for every frame: the kernel's fbdev
+        # emulation flushes to the panel on close, so a held-open fd
+        # shows nothing until the process exits.
+        self.device = device
         self._conv = (
             pygame.Surface((self.width, self.height), 0, 16,
                            masks=(0xF800, 0x07E0, 0x001F, 0))
@@ -96,13 +99,13 @@ class FramebufferPresenter:
             data = (raw if pitch == row else b"".join(
                 raw[y * pitch:y * pitch + row] for y in range(self.height)
             ))
-        if self.stride == row:
-            self.dev.seek(0)
-            self.dev.write(data)
-        else:
-            for y in range(self.height):
-                self.dev.seek(y * self.stride)
-                self.dev.write(data[y * row:(y + 1) * row])
+        with open(self.device, "r+b", buffering=0) as dev:
+            if self.stride == row:
+                dev.write(data)
+            else:
+                for y in range(self.height):
+                    dev.seek(y * self.stride)
+                    dev.write(data[y * row:(y + 1) * row])
 
 
 def get_lan_ip() -> str:
