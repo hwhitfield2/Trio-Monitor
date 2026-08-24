@@ -10,3 +10,6 @@ find "${ROOTFS_DIR}/opt/trio-monitor" -name __pycache__ -type d -exec rm -rf {} 
 
 install -m 644 "${FILES}/trio-monitor.service" \
 	"${ROOTFS_DIR}/etc/systemd/system/trio-monitor.service"
+
+install -D -m 644 "${FILES}/50-trio-monitor.rules" \
+	"${ROOTFS_DIR}/etc/polkit-1/rules.d/50-trio-monitor.rules"
