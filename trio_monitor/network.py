@@ -85,6 +85,18 @@ def stop_hotspot() -> None:
     _nmcli("connection", "delete", HOTSPOT_CONN)
 
 
+def saved_wifi_profiles() -> bool:
+    """True if any Wi-Fi connection has ever been configured."""
+    code, out = _nmcli("-t", "-f", "TYPE,NAME", "connection", "show")
+    if code != 0:
+        return False
+    return any(
+        line.split(":")[0] == "802-11-wireless"
+        and line.split(":", 1)[1] != HOTSPOT_CONN
+        for line in out.splitlines() if ":" in line
+    )
+
+
 def wifi_scan() -> list[dict]:
     """Nearby networks, strongest first, deduplicated by SSID."""
     code, out = _nmcli(
@@ -134,14 +146,17 @@ def connect_wifi(ssid: str, password: str) -> tuple[bool, str]:
 class NetworkWatcher(threading.Thread):
     """Brings the setup hotspot up when the device has no network at all.
 
-    Requires three consecutive failed checks (~90s) so brief outages and
-    router reboots don't tear down normal networking. 'none' means no
-    connection whatsoever — LAN-only setups report 'limited' and are
-    left alone.
+    On a fresh device (no Wi-Fi ever configured) the hotspot comes up on
+    the first failed check so setup starts right away. Once a Wi-Fi
+    network has been saved, three consecutive failures (~90s) are
+    required so brief outages and router reboots don't tear down normal
+    networking. 'none' means no connection whatsoever — LAN-only setups
+    report 'limited' and are left alone.
     """
 
     CHECK_SECONDS = 30
     FAILS_NEEDED = 3
+    FIRST_CHECK_DELAY = 5
 
     def __init__(self, hotspot_password: str):
         super().__init__(name="network-watcher", daemon=True)
@@ -156,13 +171,15 @@ class NetworkWatcher(threading.Thread):
         if not available():
             log.info("nmcli not found; Wi-Fi provisioning disabled")
             return
+        self._stop.wait(self.FIRST_CHECK_DELAY)
         while not self._stop.is_set():
             state = connectivity()
             if hotspot_active():
                 self._fails = 0  # we're in setup mode; stay until joined
             elif state == "none":
                 self._fails += 1
-                if self._fails >= self.FAILS_NEEDED:
+                needed = self.FAILS_NEEDED if saved_wifi_profiles() else 1
+                if self._fails >= needed:
                     start_hotspot(self.hotspot_password)
             else:
                 self._fails = 0

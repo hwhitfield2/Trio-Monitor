@@ -1,7 +1,5 @@
 [Unit]
 Description=Trio Monitor glucose display
-After=network-online.target
-Wants=network-online.target
 
 [Service]
 Type=simple
