@@ -60,6 +60,51 @@ DIRECTION_ANGLES = {
 }
 
 
+class FramebufferPresenter:
+    """Presents pygame surfaces straight to /dev/fb0.
+
+    Bypasses SDL's EGL/GLES scanout path entirely — the same route the
+    text console uses, so if boot text is visible, this works. Selected
+    with TRIO_DISPLAY=fbdev (SDL renders into a dummy surface and we
+    copy the pixels out once a second).
+    """
+
+    def __init__(self, device: str = "/dev/fb0"):
+        base = "/sys/class/graphics/" + os.path.basename(device)
+        w, h = open(base + "/virtual_size").read().strip().split(",")
+        self.width, self.height = int(w), int(h)
+        self.bpp = int(open(base + "/bits_per_pixel").read())
+        self.stride = int(open(base + "/stride").read())
+        if self.bpp not in (16, 32):
+            raise RuntimeError(f"unsupported framebuffer depth: {self.bpp}")
+        self.dev = open(device, "r+b", buffering=0)
+        self._conv = (
+            pygame.Surface((self.width, self.height), 0, 16,
+                           masks=(0xF800, 0x07E0, 0x001F, 0))
+            if self.bpp == 16 else None
+        )
+
+    def present(self, surface: pygame.Surface) -> None:
+        if self.bpp == 32:
+            data = pygame.image.tobytes(surface, "BGRA")
+            row = self.width * 4
+        else:
+            self._conv.blit(surface, (0, 0))
+            raw = self._conv.get_buffer().raw
+            pitch = self._conv.get_pitch()
+            row = self.width * 2
+            data = (raw if pitch == row else b"".join(
+                raw[y * pitch:y * pitch + row] for y in range(self.height)
+            ))
+        if self.stride == row:
+            self.dev.seek(0)
+            self.dev.write(data)
+        else:
+            for y in range(self.height):
+                self.dev.seek(y * self.stride)
+                self.dev.write(data[y * row:(y + 1) * row])
+
+
 def get_lan_ip() -> str:
     """Best-effort LAN IP (no packets are actually sent)."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -92,6 +137,10 @@ class Display:
         pygame.init()
         pygame.mouse.set_visible(False)
         dc = config.display
+        self.fb: FramebufferPresenter | None = None
+        if os.environ.get("TRIO_DISPLAY") == "fbdev":
+            self.fb = FramebufferPresenter()
+            dc.width, dc.height = self.fb.width, self.fb.height
         flags = 0 if (windowed or not dc.fullscreen) else pygame.FULLSCREEN
         self.screen = pygame.display.set_mode((dc.width, dc.height), flags)
         pygame.display.set_caption("Trio Monitor")
@@ -449,11 +498,15 @@ class Display:
         if self._hotspot_is_active():
             self.draw_hotspot_screen()
             pygame.display.flip()
+            if self.fb:
+                self.fb.present(self.screen)
             return
         snaps = [self.store.snapshot(user.name) for user in users]
         if self.is_unconfigured(snaps):
             self.draw_setup_screen()
             pygame.display.flip()
+            if self.fb:
+                self.fb.present(self.screen)
             return
         full_w = self.screen.get_width()
         portrait = height > full_w
@@ -477,6 +530,8 @@ class Display:
         )
         self.draw_theme_button()
         pygame.display.flip()
+        if self.fb:
+            self.fb.present(self.screen)
 
     def draw_theme_button(self):
         """Sun/moon touch button, bottom-center: tap to switch theme."""
