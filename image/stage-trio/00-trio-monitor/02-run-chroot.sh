@@ -6,6 +6,11 @@ chown -R root:root /opt/trio-monitor
 systemctl enable trio-monitor.service
 systemctl set-default multi-user.target
 
+# Unblock Wi-Fi: without a regulatory country rfkill blocks the radio,
+# which would silently break the setup hotspot. (Belt-and-braces with
+# pi-gen's WPA_COUNTRY handling.)
+raspi-config nonint do_wifi_country US || true
+
 # Wall display: never blank the console.
 if ! grep -q consoleblank /boot/firmware/cmdline.txt; then
 	sed -i '1 s/$/ consoleblank=0/' /boot/firmware/cmdline.txt

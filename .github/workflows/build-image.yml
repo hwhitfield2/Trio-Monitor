@@ -33,6 +33,7 @@ jobs:
           password: "triomonitor"
           disable-first-boot-user-rename: 1
           enable-ssh: 1
+          wpa-country: "US"
           compression: xz
           compression-level: 9
           verbose-output: true
