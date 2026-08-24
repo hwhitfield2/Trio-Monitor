@@ -1,5 +1,7 @@
 [Unit]
 Description=Trio Monitor glucose display
+# An appliance display must never stop retrying.
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
