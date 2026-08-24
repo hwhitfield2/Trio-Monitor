@@ -19,7 +19,7 @@ jobs:
           image-name: trio-monitor
           # stage2 = Raspberry Pi OS Lite (no desktop), then our stage on top
           stage-list: stage0 stage1 stage2 ./image/stage-trio
-          release: bookworm
+          release: trixie
           hostname: trio-monitor
           username: trio
           password: "triomonitor"
