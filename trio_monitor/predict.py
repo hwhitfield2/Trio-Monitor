@@ -33,13 +33,24 @@ def device_series(raw: dict) -> tuple[int, list[float]] | None:
         return parse_time_ms(predicted, "startDate"), list(predicted["values"])
     suggested = (raw.get("openaps") or {}).get("suggested") or {}
     pred_bgs = suggested.get("predBGs") or {}
-    # Prefer the carb-aware curve, then unannounced-meal, then insulin-only.
-    for key in ("COB", "UAM", "IOB", "ZT"):
-        values = pred_bgs.get(key)
-        if values:
-            start = parse_time_ms(suggested, "timestamp", "deliverAt")
-            return start, list(values)
-    return None
+    candidates = [
+        list(pred_bgs[key])
+        for key in ("COB", "UAM", "IOB", "ZT")
+        if pred_bgs.get(key)
+    ]
+    if not candidates:
+        return None
+    # oref uploads several scenario curves (carb-aware, unannounced-meal,
+    # insulin-only, zero-temp). The pump's own headline outcome is
+    # eventualBG — show the curve that ends closest to it, rather than a
+    # worst-case scenario pinned at the 39 mg/dL clamp.
+    eventual = suggested.get("eventualBG")
+    if isinstance(eventual, (int, float)):
+        values = min(candidates, key=lambda c: abs(c[-1] - eventual))
+    else:
+        values = candidates[0]
+    start = parse_time_ms(suggested, "timestamp", "deliverAt")
+    return start, values
 
 
 def _oref_series(snap: UserSnapshot, now_ms: int) -> tuple[int, list[float]]:
