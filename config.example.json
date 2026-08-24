@@ -1,0 +1,18 @@
+{
+  "users": [
+    { "name": "Person A", "port": 1337, "api_secret": "change-me-person-a" },
+    { "name": "Person B", "port": 1338, "api_secret": "change-me-person-b" }
+  ],
+  "display": {
+    "fullscreen": true,
+    "width": 800,
+    "height": 480,
+    "units": "mg/dL",
+    "low": 70,
+    "high": 180,
+    "urgent_low": 55,
+    "urgent_high": 250,
+    "stale_minutes": 12
+  },
+  "database": "trio-monitor.db"
+}

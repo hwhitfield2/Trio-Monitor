@@ -1,0 +1,21 @@
+[Unit]
+Description=Trio Monitor glucose display
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+# video/render for KMS/DRM output, input for the touchscreen/keyboard
+SupplementaryGroups=video render input
+WorkingDirectory=/home/pi/Trio-Monitor
+ExecStart=/usr/bin/python3 -m trio_monitor --config /home/pi/Trio-Monitor/config.json
+Restart=always
+RestartSec=3
+Environment=SDL_VIDEODRIVER=kmsdrm
+Environment=SDL_AUDIODRIVER=dummy
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
