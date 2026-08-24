@@ -565,6 +565,13 @@ class AdminHandler(BaseHTTPRequestHandler):
   <div class="row"><label>Urgent high</label><input class="short" name="urgent_high" value="{d('urgent_high', 250)}"></div>
   <div class="row"><label>Stale after (minutes)</label><input class="short" name="stale_minutes" value="{d('stale_minutes', 12)}"></div>
 </fieldset>
+<h2>Admin</h2>
+<fieldset><legend>Web access</legend>
+  <div class="row"><label>New admin password</label>
+    <input type="password" name="admin_password" value="" placeholder="(leave blank to keep current)"></div>
+  <p class="note">Protects this web interface and the API (username: admin).
+  After saving with a new password, your browser will ask you to log in again.</p>
+</fieldset>
 <button type="submit">Save &amp; Apply</button>
 <p class="note">Saving restarts the display (takes ~5 seconds). Blank API secrets
 are generated automatically; blank per-person thresholds inherit the defaults.</p>
@@ -683,6 +690,12 @@ are generated automatically; blank per-person thresholds inherit the defaults.</
         for key in ("low", "high", "urgent_low", "urgent_high", "stale_minutes"):
             if form.get(key):
                 display[key] = float(form[key])
+
+        new_admin_password = form.get("admin_password", "").strip()
+        if new_admin_password:
+            if len(new_admin_password) < 6:
+                raise ValueError("admin password must be at least 6 characters")
+            raw.setdefault("admin", {})["password"] = new_admin_password
 
         tmp = self.server.config_path + ".tmp"
         with open(tmp, "w") as f:
