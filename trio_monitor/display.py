@@ -144,8 +144,14 @@ class Display:
         if os.environ.get("TRIO_DISPLAY") == "fbdev":
             self.fb = FramebufferPresenter()
             dc.width, dc.height = self.fb.width, self.fb.height
-        flags = 0 if (windowed or not dc.fullscreen) else pygame.FULLSCREEN
-        self.screen = pygame.display.set_mode((dc.width, dc.height), flags)
+            # Never pass FULLSCREEN to the dummy driver: it substitutes its
+            # fake 1024x768 desktop size, and the framebuffer copy would
+            # then crop to the top-left corner (a "zoomed in" panel).
+            pygame.display.set_mode((dc.width, dc.height))
+            self.screen = pygame.Surface((dc.width, dc.height))
+        else:
+            flags = 0 if (windowed or not dc.fullscreen) else pygame.FULLSCREEN
+            self.screen = pygame.display.set_mode((dc.width, dc.height), flags)
         pygame.display.set_caption("Trio Monitor")
         self.clock = pygame.time.Clock()
         self._fonts: dict[int, pygame.font.Font] = {}
