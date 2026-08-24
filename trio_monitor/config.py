@@ -48,6 +48,16 @@ class Config:
     admin_password: str = ""        # empty disables Basic auth
 
 
+READABLE_ALPHABET = "abcdefghjkmnpqrstuvwxyzACDEFGHJKMNPQRSTUVWXYZ23456789"
+
+
+def readable_secret(length: int = 10) -> str:
+    """Random secret without lookalike characters (no I/l/1/O/0) — these
+    get read off a screen and typed on a phone."""
+    import secrets
+    return "".join(secrets.choice(READABLE_ALPHABET) for _ in range(length))
+
+
 def create_default(path: str | Path) -> None:
     """Write a starter config so a fresh install boots straight into the
     on-screen setup flow (QR code -> web settings) with secure secrets."""
@@ -59,7 +69,7 @@ def create_default(path: str | Path) -> None:
         ],
         "display": {},
         "database": "trio-monitor.db",
-        "admin": {"port": 8080, "password": secrets.token_urlsafe(9)},
+        "admin": {"port": 8080, "password": readable_secret()},
     }
     Path(path).write_text(json.dumps(starter, indent=2) + "\n")
 

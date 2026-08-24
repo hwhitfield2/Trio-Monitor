@@ -461,6 +461,13 @@ class Display:
             "/settings  to pick your Wi-Fi",
             int(s * 0.05), self.pal.dim, midtop=(cx, info_y + int(s * 0.08)),
         )
+        if self.config.admin_password:
+            self.text(
+                screen,
+                f"log in:  admin  /  {self.config.admin_password}",
+                int(s * 0.05), self.pal.fg,
+                midtop=(cx, info_y + int(s * 0.155)),
+            )
 
     def is_unconfigured(self, snaps) -> bool:
         """True until any data has arrived or any pull source is configured."""
