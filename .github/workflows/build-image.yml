@@ -12,6 +12,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # pi-gen only sees the stage directory, so the app source must be
+      # inside it before the build starts.
+      - name: Copy application into build stage
+        run: |
+          rm -rf image/stage-trio/00-trio-monitor/files/trio_monitor
+          cp -r trio_monitor image/stage-trio/00-trio-monitor/files/
+          find image/stage-trio -name __pycache__ -type d -exec rm -rf {} +
+
       - name: Build Raspberry Pi OS image with pi-gen
         id: build
         uses: usimd/pi-gen-action@v1
