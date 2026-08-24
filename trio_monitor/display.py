@@ -440,6 +440,38 @@ class Display:
         s = min(w, h)  # scale text by the smaller dimension (portrait-safe)
         ssid, pw = network.HOTSPOT_SSID, self._hotspot_pw
 
+        if network.hotspot_client_connected():
+            # Stage 2: a phone has joined — offer a QR that opens the
+            # settings page already logged in (?key= auto-auth).
+            url = (f"http://{network.HOTSPOT_ADDR}:{self.config.admin_port}"
+                   f"/settings?key={self.config.admin_password}")
+            self.text(screen, "Connected!  One more scan", int(s * 0.09),
+                      self.pal.fg, midtop=(cx, int(h * 0.035)))
+            self.text(screen, "2.  Scan to open the setup page", int(s * 0.055),
+                      self.pal.dim, midtop=(cx, int(h * 0.14)))
+            qr = self._qr_surface(url, int(s * 0.42))
+            if qr:
+                rect = qr.get_rect(center=(cx, int(h * 0.45)))
+                screen.blit(qr, rect)
+                info_y = rect.bottom + int(s * 0.025)
+            else:
+                info_y = int(h * 0.40)
+            self.text(
+                screen,
+                f"or open  http://{network.HOTSPOT_ADDR}:"
+                f"{self.config.admin_port}/settings",
+                int(s * 0.05), self.pal.dim, midtop=(cx, info_y),
+            )
+            if self.config.admin_password:
+                self.text(
+                    screen,
+                    f"log in:  admin  /  {self.config.admin_password}",
+                    int(s * 0.05), self.pal.fg,
+                    midtop=(cx, info_y + int(s * 0.075)),
+                )
+            return
+
+        # Stage 1: nothing has joined yet — show the Wi-Fi join QR.
         self.text(screen, "Connect Trio Monitor to Wi-Fi", int(s * 0.09),
                   self.pal.fg, midtop=(cx, int(h * 0.035)))
         self.text(screen, "1.  Scan to join the setup hotspot", int(s * 0.055),
@@ -455,19 +487,9 @@ class Display:
 
         self.text(screen, f"{ssid}   password: {pw}", int(s * 0.055),
                   self.pal.fg, midtop=(cx, info_y))
-        self.text(
-            screen,
-            f"2.  Then open  http://{network.HOTSPOT_ADDR}:{self.config.admin_port}"
-            "/settings  to pick your Wi-Fi",
-            int(s * 0.05), self.pal.dim, midtop=(cx, info_y + int(s * 0.08)),
-        )
-        if self.config.admin_password:
-            self.text(
-                screen,
-                f"log in:  admin  /  {self.config.admin_password}",
-                int(s * 0.05), self.pal.fg,
-                midtop=(cx, info_y + int(s * 0.155)),
-            )
+        self.text(screen, "the screen changes once your phone joins",
+                  int(s * 0.05), self.pal.dim,
+                  midtop=(cx, info_y + int(s * 0.08)))
 
     def is_unconfigured(self, snaps) -> bool:
         """True until any data has arrived or any pull source is configured."""

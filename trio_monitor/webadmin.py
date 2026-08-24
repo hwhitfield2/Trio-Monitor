@@ -15,7 +15,7 @@ import logging
 import os
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlparse
 
 import secrets as secrets_mod
 
@@ -356,6 +356,12 @@ class AdminHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        if getattr(self, "_grant_cookie", False):
+            self.send_header(
+                "Set-Cookie",
+                f"trio_key={self.server.password}; Path=/; Max-Age=604800",
+            )
+            self._grant_cookie = False
         for k, v in (extra or {}).items():
             self.send_header(k, v)
         self.end_headers()
@@ -367,11 +373,19 @@ class AdminHandler(BaseHTTPRequestHandler):
         header = self.headers.get("Authorization", "")
         if header.startswith("Basic "):
             try:
-                decoded = base64.b64decode(header[6:]).decode()
-                return decoded.split(":", 1)[1] == self.server.password
+                if base64.b64decode(header[6:]).decode().split(":", 1)[1] \
+                        == self.server.password:
+                    return True
             except Exception:
-                return False
-        return False
+                pass
+        # ?key= link (the setup QR encodes it): grant and set a cookie so
+        # the rest of the session needs no typed login.
+        query = parse_qs(urlparse(self.path).query)
+        if query.get("key", [""])[0] == self.server.password:
+            self._grant_cookie = True
+            return True
+        cookies = self.headers.get("Cookie", "")
+        return f"trio_key={self.server.password}" in cookies
 
     def _deny(self):
         self._send(

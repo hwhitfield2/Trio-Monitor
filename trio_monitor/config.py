@@ -49,6 +49,13 @@ class Config:
 
 
 READABLE_ALPHABET = "abcdefghjkmnpqrstuvwxyzACDEFGHJKMNPQRSTUVWXYZ23456789"
+SIMPLE_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
+
+
+def simple_secret(length: int = 6) -> str:
+    """Short, easily-typed secret for the on-device admin login."""
+    import secrets
+    return "".join(secrets.choice(SIMPLE_ALPHABET) for _ in range(length))
 
 
 def readable_secret(length: int = 10) -> str:
@@ -69,7 +76,7 @@ def create_default(path: str | Path) -> None:
         ],
         "display": {},
         "database": "trio-monitor.db",
-        "admin": {"port": 8080, "password": readable_secret()},
+        "admin": {"port": 8080, "password": simple_secret()},
     }
     Path(path).write_text(json.dumps(starter, indent=2) + "\n")
 

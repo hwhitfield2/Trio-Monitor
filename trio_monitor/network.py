@@ -97,6 +97,19 @@ def saved_wifi_profiles() -> bool:
     )
 
 
+def hotspot_client_connected() -> bool:
+    """True once any device has joined the setup hotspot (ARP on 10.42.0.x)."""
+    try:
+        for line in open("/proc/net/arp").readlines()[1:]:
+            parts = line.split()
+            if (len(parts) >= 4 and parts[0].startswith("10.42.0.")
+                    and parts[3] != "00:00:00:00:00:00"):
+                return True
+    except OSError:
+        pass
+    return False
+
+
 def wifi_scan() -> list[dict]:
     """Nearby networks, strongest first, deduplicated by SSID."""
     code, out = _nmcli(
